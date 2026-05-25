@@ -48,9 +48,25 @@ public class Sql {
         }
     }
 
+    public List<Map<String, Object>> selectRows() {
+        try (PreparedStatement pstmt = buildStatement();
+             ResultSet rs = pstmt.executeQuery()) {
+            List<Map<String, Object>> rows = new ArrayList<>();
+            while (rs.next()) {
+                rows.add(mapRow(rs));
+            }
+            return rows;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Map<String, Object> selectRow() {
+        List<Map<String, Object>> rows = selectRows();
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     // ── stub (미구현) ─────────────────────────────
-    public List<Map<String, Object>> selectRows()    { throw new UnsupportedOperationException(); }
-    public Map<String, Object> selectRow()           { throw new UnsupportedOperationException(); }
     public LocalDateTime selectDatetime()            { throw new UnsupportedOperationException(); }
     public Long selectLong()                         { throw new UnsupportedOperationException(); }
     public String selectString()                     { throw new UnsupportedOperationException(); }
@@ -67,6 +83,30 @@ public class Sql {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Map<String, Object> mapRow(ResultSet rs) throws SQLException {
+        ResultSetMetaData meta = rs.getMetaData();
+        Map<String, Object> row = new LinkedHashMap<>();
+
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            String colName = meta.getColumnLabel(i);
+            int sqlType = meta.getColumnType(i);
+            Object value;
+
+            if (sqlType == Types.BIT || sqlType == Types.BOOLEAN) {
+                boolean b = rs.getBoolean(i);
+                value = rs.wasNull() ? null : b;
+            } else if (sqlType == Types.TIMESTAMP) {
+                Timestamp ts = rs.getTimestamp(i);
+                value = ts != null ? ts.toLocalDateTime() : null;
+            } else {
+                value = rs.getObject(i);
+            }
+
+            row.put(colName, value);
+        }
+        return row;
     }
 
     private PreparedStatement buildStatement() throws SQLException {
