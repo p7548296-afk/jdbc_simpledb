@@ -66,10 +66,45 @@ public class Sql {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    public LocalDateTime selectDatetime() {
+        try (PreparedStatement pstmt = buildStatement();
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                Timestamp ts = rs.getTimestamp(1);
+                return ts != null ? ts.toLocalDateTime() : null;
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Long selectLong() {
+        try (PreparedStatement pstmt = buildStatement();
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                long val = rs.getLong(1);
+                return rs.wasNull() ? null : val;
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String selectString() {
+        try (PreparedStatement pstmt = buildStatement();
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // ── stub (미구현) ─────────────────────────────
-    public LocalDateTime selectDatetime()            { throw new UnsupportedOperationException(); }
-    public Long selectLong()                         { throw new UnsupportedOperationException(); }
-    public String selectString()                     { throw new UnsupportedOperationException(); }
     public Boolean selectBoolean()                   { throw new UnsupportedOperationException(); }
     public List<Long> selectLongs()                  { throw new UnsupportedOperationException(); }
     public Sql appendIn(String sql, Object... params){ throw new UnsupportedOperationException(); }
@@ -88,12 +123,10 @@ public class Sql {
     private Map<String, Object> mapRow(ResultSet rs) throws SQLException {
         ResultSetMetaData meta = rs.getMetaData();
         Map<String, Object> row = new LinkedHashMap<>();
-
         for (int i = 1; i <= meta.getColumnCount(); i++) {
             String colName = meta.getColumnLabel(i);
             int sqlType = meta.getColumnType(i);
             Object value;
-
             if (sqlType == Types.BIT || sqlType == Types.BOOLEAN) {
                 boolean b = rs.getBoolean(i);
                 value = rs.wasNull() ? null : b;
@@ -103,7 +136,6 @@ public class Sql {
             } else {
                 value = rs.getObject(i);
             }
-
             row.put(colName, value);
         }
         return row;
