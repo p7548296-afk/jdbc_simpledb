@@ -20,6 +20,15 @@ public class Sql {
         return this;
     }
 
+    public Sql appendIn(String sql, Object... params) {
+        String placeholders = String.join(", ", Collections.nCopies(params.length, "?"));
+        String expandedSql = sql.replaceFirst("\\?", placeholders);
+        if (!sqlBuilder.isEmpty()) sqlBuilder.append(" ");
+        sqlBuilder.append(expandedSql);
+        this.params.addAll(Arrays.asList(params));
+        return this;
+    }
+
     public long insert() {
         try (PreparedStatement pstmt = buildStatement(Statement.RETURN_GENERATED_KEYS)) {
             pstmt.executeUpdate();
@@ -117,9 +126,20 @@ public class Sql {
         }
     }
 
+    public List<Long> selectLongs() {
+        try (PreparedStatement pstmt = buildStatement();
+             ResultSet rs = pstmt.executeQuery()) {
+            List<Long> result = new ArrayList<>();
+            while (rs.next()) {
+                result.add(rs.getLong(1));
+            }
+            return result;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // ── stub (미구현) ─────────────────────────────
-    public List<Long> selectLongs()                  { throw new UnsupportedOperationException(); }
-    public Sql appendIn(String sql, Object... params){ throw new UnsupportedOperationException(); }
     public <T> List<T> selectRows(Class<T> clazz)   { throw new UnsupportedOperationException(); }
     public <T> T selectRow(Class<T> clazz)           { throw new UnsupportedOperationException(); }
     // ─────────────────────────────────────────────
