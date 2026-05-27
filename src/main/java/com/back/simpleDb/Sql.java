@@ -104,8 +104,20 @@ public class Sql {
         }
     }
 
+    public Boolean selectBoolean() {
+        try (PreparedStatement pstmt = buildStatement();
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                boolean val = rs.getBoolean(1);
+                return rs.wasNull() ? null : val;
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // ── stub (미구현) ─────────────────────────────
-    public Boolean selectBoolean()                   { throw new UnsupportedOperationException(); }
     public List<Long> selectLongs()                  { throw new UnsupportedOperationException(); }
     public Sql appendIn(String sql, Object... params){ throw new UnsupportedOperationException(); }
     public <T> List<T> selectRows(Class<T> clazz)   { throw new UnsupportedOperationException(); }
