@@ -1,5 +1,11 @@
 package com.back.simpleDb;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -8,6 +14,16 @@ public class Sql {
     private final SimpleDb simpleDb;
     private final StringBuilder sqlBuilder = new StringBuilder();
     private final List<Object> params = new ArrayList<>();
+
+    private static final ObjectMapper objectMapper;
+
+    static {
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+        objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+    }
 
     public Sql(SimpleDb simpleDb) {
         this.simpleDb = simpleDb;
@@ -75,6 +91,17 @@ public class Sql {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
+    public <T> List<T> selectRows(Class<T> clazz) {
+        return selectRows().stream()
+                .map(row -> objectMapper.convertValue(row, clazz))
+                .toList();
+    }
+
+    public <T> T selectRow(Class<T> clazz) {
+        Map<String, Object> row = selectRow();
+        return row == null ? null : objectMapper.convertValue(row, clazz);
+    }
+
     public LocalDateTime selectDatetime() {
         try (PreparedStatement pstmt = buildStatement();
              ResultSet rs = pstmt.executeQuery()) {
@@ -138,11 +165,6 @@ public class Sql {
             throw new RuntimeException(e);
         }
     }
-
-    // ── stub (미구현) ─────────────────────────────
-    public <T> List<T> selectRows(Class<T> clazz)   { throw new UnsupportedOperationException(); }
-    public <T> T selectRow(Class<T> clazz)           { throw new UnsupportedOperationException(); }
-    // ─────────────────────────────────────────────
 
     void execute() {
         try (PreparedStatement pstmt = buildStatement()) {
