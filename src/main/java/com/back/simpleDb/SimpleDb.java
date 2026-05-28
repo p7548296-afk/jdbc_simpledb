@@ -35,6 +35,21 @@ public class SimpleDb {
         return conn;
     }
 
+    public void close() {
+        Connection conn = connectionHolder.get();
+        if (conn != null) {
+            try {
+                if (!conn.isClosed()) {
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } finally {
+                connectionHolder.remove();
+            }
+        }
+    }
+
     public void run(String sql, Object... params) {
         Sql s = genSql();
         s.append(sql, params);
@@ -45,24 +60,31 @@ public class SimpleDb {
         return new Sql(this);
     }
 
-    public void close() {
-        Connection conn = connectionHolder.get(); // 현재 쓰레드 전용 Connection 꺼내기
-        if (conn != null) {
-            try {
-                if (!conn.isClosed()) {
-                    conn.close(); // Connection 닫기
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            } finally {
-                connectionHolder.remove(); // ThreadLocal에서 제거 (메모리 누수 방지)
-            }
+    public void startTransaction() {
+        try {
+            getConnection().setAutoCommit(false);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    // ── stub (미구현) ─────────────────────────────
-    public void startTransaction() { throw new UnsupportedOperationException(); }
-    public void rollback()         { throw new UnsupportedOperationException(); }
-    public void commit()           { throw new UnsupportedOperationException(); }
-    // ─────────────────────────────────────────────
+    public void rollback() {
+        try {
+            Connection conn = getConnection();
+            conn.rollback();
+            conn.setAutoCommit(true);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void commit() {
+        try {
+            Connection conn = getConnection();
+            conn.commit();
+            conn.setAutoCommit(true);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
