@@ -45,8 +45,22 @@ public class SimpleDb {
         return new Sql(this);
     }
 
+    public void close() {
+        Connection conn = connectionHolder.get(); // 현재 쓰레드 전용 Connection 꺼내기
+        if (conn != null) {
+            try {
+                if (!conn.isClosed()) {
+                    conn.close(); // Connection 닫기
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            } finally {
+                connectionHolder.remove(); // ThreadLocal에서 제거 (메모리 누수 방지)
+            }
+        }
+    }
+
     // ── stub (미구현) ─────────────────────────────
-    public void close()            { throw new UnsupportedOperationException(); }
     public void startTransaction() { throw new UnsupportedOperationException(); }
     public void rollback()         { throw new UnsupportedOperationException(); }
     public void commit()           { throw new UnsupportedOperationException(); }
